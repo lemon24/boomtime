@@ -60,7 +60,7 @@ def get_version(db):
     return version
 
 
-def create(db):
+def create_db(db):
     with ddl_transaction(db):
         db.execute("""
             CREATE TABLE version (
@@ -80,11 +80,11 @@ def create(db):
         db.execute("INSERT INTO version VALUES (?);", (VERSION, ))
 
 
-def open(path):
+def open_db(path):
     db = sqlite3.connect(path, detect_types=sqlite3.PARSE_DECLTYPES)
     version = get_version(db)
     if version is None:
-        create(db)
+        create_db(db)
     elif version != VERSION:
         raise InvalidVersion("invalid version: {}".format(version))
     return db
@@ -92,6 +92,6 @@ def open(path):
 
 if __name__ == '__main__':
 
-    db = open('db.sqlite')
+    db = open_db('db.sqlite')
     db.execute("DROP TABLE version;")
     # python3 -m boomtime.db; echo '.schema' | sqlite3 db.sqlite
