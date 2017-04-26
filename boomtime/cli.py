@@ -93,5 +93,37 @@ def delete(db, id):
     echo("deleted {} event(s)".format(rows.rowcount))
 
 
+@cli.command()
+@click.option('-t', '--title')
+@click.option('-s', '--start', type=dateutil.parser.parse)
+@click.option('-e', '--end', type=dateutil.parser.parse)
+@click.option('--all-day/--no-all-day')
+@click.option('--id', required=True, type=int)
+@click.pass_obj
+def update(db, title, start, end, all_day, id):
+
+    params = {'id': id, 'title': title}
+
+    if start and end:
+        if start > end:
+            abort("start cannot be later than end")
+        params['start'] = local_to_utc(start)
+        params['end'] = local_to_utc(end)
+    elif start or end:
+        abort("both start and end must be given")
+
+    if all_day is not None:
+        params['all_day'] = all_day
+
+    with db:
+        rows = db.execute("""
+            UPDATE events
+            SET {}
+            WHERE id = :id
+        """.format(', '.join('{0} = :{0}'.format(f) for f in params)), params)
+    echo("updated {} event(s)".format(rows.rowcount))
+
+
+
 if __name__ == '__main__':
     cli(auto_envvar_prefix=APP_NAME.upper())
