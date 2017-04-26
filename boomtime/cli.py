@@ -28,6 +28,25 @@ def utc_to_local(dt, tz=None):
     return pytz.utc.localize(dt).astimezone(tz).replace(tzinfo=None)
 
 
+class LocalDatetimeParamType(click.ParamType):
+
+    name = 'local datetime'
+
+    def convert(self, value, param, ctx):
+        try:
+            dt = dateutil.parser.parse(value)
+            if not dt.tzinfo:
+                dt = local_to_utc(dt)
+            else:
+                dt = dt.astimezone(pytz.utc).replace(tzinfo=None)
+            return dt
+        except ValueError:
+            self.fail('%s is not a valid datetime' % value, param, ctx)
+
+
+LOCAL_DATETIME = LocalDatetimeParamType()
+
+
 @click.group()
 @click.option('--db', default=get_default_db_path, type=click.Path(dir_okay=False))
 @click.pass_context
@@ -37,13 +56,11 @@ def cli(ctx, db):
 
 @cli.command()
 @click.option('-t', '--title')
-@click.option('-s', '--start', type=dateutil.parser.parse)
-@click.option('-e', '--end', type=dateutil.parser.parse)
+@click.option('-s', '--start', type=LOCAL_DATETIME)
+@click.option('-e', '--end', type=LOCAL_DATETIME)
 @click.option('--all-day/--no-all-day')
 @click.pass_obj
 def add(db, title, start, end, all_day):
-    start = local_to_utc(start)
-    end = local_to_utc(end)
     if start > end:
         abort("start cannot be later than end")
     with db:
@@ -54,13 +71,11 @@ def add(db, title, start, end, all_day):
 
 
 @cli.command()
-@click.option('-s', '--start', type=dateutil.parser.parse)
-@click.option('-e', '--end', type=dateutil.parser.parse)
+@click.option('-s', '--start', type=LOCAL_DATETIME)
+@click.option('-e', '--end', type=LOCAL_DATETIME)
 @click.option('-v', '--verbose', count=True)
 @click.pass_obj
 def show(db, start, end, verbose):
-    start = local_to_utc(start)
-    end = local_to_utc(end)
     # TODO: all_day == 1 needs a different query
     rows = db.execute("""
         SELECT id, title, start, end FROM events
@@ -95,8 +110,8 @@ def delete(db, id):
 
 @cli.command()
 @click.option('-t', '--title')
-@click.option('-s', '--start', type=dateutil.parser.parse)
-@click.option('-e', '--end', type=dateutil.parser.parse)
+@click.option('-s', '--start', type=LOCAL_DATETIME)
+@click.option('-e', '--end', type=LOCAL_DATETIME)
 @click.option('--all-day/--no-all-day')
 @click.option('--id', required=True, type=int)
 @click.pass_obj
@@ -107,8 +122,8 @@ def update(db, title, start, end, all_day, id):
     if start and end:
         if start > end:
             abort("start cannot be later than end")
-        params['start'] = local_to_utc(start)
-        params['end'] = local_to_utc(end)
+        params['start'] = start
+        params['end'] = end
     elif start or end:
         abort("both start and end must be given")
 
