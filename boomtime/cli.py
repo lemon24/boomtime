@@ -81,6 +81,17 @@ def show(db, start, end, verbose):
         echo(fmt.format(**locals()))
 
 
+@cli.command()
+@click.option('--id', required=True, type=int)
+@click.pass_obj
+def delete(db, id):
+    with db:
+        rows = db.execute("""
+            DELETE FROM events
+            WHERE id = :id
+        """, {'id': id})
+    echo("deleted {} event(s)".format(rows.rowcount))
+
 
 if __name__ == '__main__':
     cli(auto_envvar_prefix=APP_NAME.upper())
