@@ -2,6 +2,7 @@ import os.path
 import datetime
 
 import click
+from click import echo
 import dateutil.parser
 import pytz
 import tzlocal
@@ -55,20 +56,29 @@ def add(db, title, start, end, all_day):
 @cli.command()
 @click.option('-s', '--start', type=dateutil.parser.parse)
 @click.option('-e', '--end', type=dateutil.parser.parse)
+@click.option('-v', '--verbose', count=True)
 @click.pass_obj
-def show(db, start, end):
+def show(db, start, end, verbose):
     start = local_to_utc(start)
     end = local_to_utc(end)
     # TODO: all_day == 1 needs a different query
     rows = db.execute("""
-        SELECT title, start, end FROM events
+        SELECT id, title, start, end FROM events
         WHERE
             start < :start and end > :end
             OR start between :start and :end
             OR end between :start and :end
     """, {'start': start, 'end': end})
-    for title, start, end in rows:
-        print(utc_to_local(start), utc_to_local(end), title)
+
+    if verbose:
+        fmt = "{id:>7} {start} {end} {title}"
+    else:
+        fmt = "{start} {end} {title}"
+
+    for id, title, start, end in rows:
+        start = utc_to_local(start)
+        end = utc_to_local(end)
+        echo(fmt.format(**locals()))
 
 
 
