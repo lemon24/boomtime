@@ -8,6 +8,7 @@ import pytz
 import tzlocal
 
 from .db import open_db
+from .calendar import Calendar, CalendarError
 
 
 APP_NAME = 'boomtime'
@@ -51,7 +52,7 @@ LOCAL_DATETIME = LocalDatetimeParamType()
 @click.option('--db', default=get_default_db_path, type=click.Path(dir_okay=False))
 @click.pass_context
 def cli(ctx, db):
-    ctx.obj = open_db(db)
+    ctx.obj = Calendar(open_db(db))
 
 
 @cli.command()
@@ -60,14 +61,11 @@ def cli(ctx, db):
 @click.option('-e', '--end', type=LOCAL_DATETIME)
 @click.option('--all-day/--no-all-day')
 @click.pass_obj
-def add(db, title, start, end, all_day):
-    if start > end:
-        abort("start cannot be later than end")
-    with db:
-        db.execute("""
-            INSERT INTO events (title, description, all_day, start, end)
-            VALUES (?, ?, ?, ?, ?);
-        """, (title, None, all_day, start, end))
+def add(calendar, title, start, end, all_day):
+    try:
+        calendar.add_event(title, start, end, all_day)
+    except CalendarError as e:
+        abort(str(e))
 
 
 @cli.command()
@@ -75,37 +73,28 @@ def add(db, title, start, end, all_day):
 @click.option('-e', '--end', type=LOCAL_DATETIME)
 @click.option('-v', '--verbose', count=True)
 @click.pass_obj
-def show(db, start, end, verbose):
-    # TODO: all_day == 1 needs a different query
-    rows = db.execute("""
-        SELECT id, title, start, end FROM events
-        WHERE
-            start < :start and end > :end
-            OR start between :start and :end
-            OR end between :start and :end
-    """, {'start': start, 'end': end})
-
+def show(calendar, start, end, verbose):
     if verbose:
         fmt = "{id:>7} {start} {end} {title}"
     else:
         fmt = "{start} {end} {title}"
 
-    for id, title, start, end in rows:
-        start = utc_to_local(start)
-        end = utc_to_local(end)
-        echo(fmt.format(**locals()))
+    for event in calendar.get_events(start, end):
+        args = {
+            'id': event.id,
+            'start': utc_to_local(event.start),
+            'end': utc_to_local(event.end),
+            'title': event.title,
+        }
+        echo(fmt.format(**args))
 
 
 @cli.command()
 @click.option('--id', required=True, type=int)
 @click.pass_obj
-def delete(db, id):
-    with db:
-        rows = db.execute("""
-            DELETE FROM events
-            WHERE id = :id
-        """, {'id': id})
-    echo("deleted {} event(s)".format(rows.rowcount))
+def delete(calendar, id):
+    count = calendar.delete_event(id)
+    echo("deleted {} event(s)".format(count))
 
 
 @cli.command()
@@ -115,28 +104,12 @@ def delete(db, id):
 @click.option('--all-day/--no-all-day')
 @click.option('--id', required=True, type=int)
 @click.pass_obj
-def update(db, title, start, end, all_day, id):
-
-    params = {'id': id, 'title': title}
-
-    if start and end:
-        if start > end:
-            abort("start cannot be later than end")
-        params['start'] = start
-        params['end'] = end
-    elif start or end:
-        abort("both start and end must be given")
-
-    if all_day is not None:
-        params['all_day'] = all_day
-
-    with db:
-        rows = db.execute("""
-            UPDATE events
-            SET {}
-            WHERE id = :id
-        """.format(', '.join('{0} = :{0}'.format(f) for f in params)), params)
-    echo("updated {} event(s)".format(rows.rowcount))
+def update(calendar, title, start, end, all_day, id):
+    try:
+        count = calendar.update_event(id, title=title, start=start, end=end, all_day=all_day)
+    except CalendarError as e:
+        abort(str(e))
+    echo("updated {} event(s)".format(count))
 
 
 
