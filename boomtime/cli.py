@@ -4,11 +4,11 @@ import datetime
 import click
 from click import echo
 import dateutil.parser
-import pytz
 import tzlocal
 
 from .db import open_db
-from .calendar import Calendar, CalendarError
+from .calendar import CalendarError
+from .local_calendar import LocalCalendar
 
 
 APP_NAME = 'boomtime'
@@ -20,45 +20,30 @@ def abort(message, *args, **kwargs):
     raise click.ClickException(message.format(*args, **kwargs))
 
 
-def local_to_utc(dt, tz=None):
-    tz = tz or tzlocal.get_localzone()
-    return tz.localize(dt).astimezone(pytz.utc).replace(tzinfo=None)
+class DatetimeParamType(click.ParamType):
 
-def utc_to_local(dt, tz=None):
-    tz = tz or tzlocal.get_localzone()
-    return pytz.utc.localize(dt).astimezone(tz).replace(tzinfo=None)
-
-
-class LocalDatetimeParamType(click.ParamType):
-
-    name = 'local datetime'
+    name = 'datetime'
 
     def convert(self, value, param, ctx):
         try:
-            dt = dateutil.parser.parse(value)
-            if not dt.tzinfo:
-                dt = local_to_utc(dt)
-            else:
-                dt = dt.astimezone(pytz.utc).replace(tzinfo=None)
-            return dt
+            return dateutil.parser.parse(value)
         except ValueError:
             self.fail('%s is not a valid datetime' % value, param, ctx)
 
-
-LOCAL_DATETIME = LocalDatetimeParamType()
+DATETIME = DatetimeParamType()
 
 
 @click.group()
 @click.option('--db', default=get_default_db_path, type=click.Path(dir_okay=False))
 @click.pass_context
 def cli(ctx, db):
-    ctx.obj = Calendar(open_db(db))
+    ctx.obj = LocalCalendar(open_db(db), tzlocal.get_localzone())
 
 
 @cli.command()
 @click.option('-t', '--title')
-@click.option('-s', '--start', type=LOCAL_DATETIME)
-@click.option('-e', '--end', type=LOCAL_DATETIME)
+@click.option('-s', '--start', type=DATETIME)
+@click.option('-e', '--end', type=DATETIME)
 @click.option('--all-day/--no-all-day')
 @click.pass_obj
 def add(calendar, title, start, end, all_day):
@@ -69,8 +54,8 @@ def add(calendar, title, start, end, all_day):
 
 
 @cli.command()
-@click.option('-s', '--start', type=LOCAL_DATETIME)
-@click.option('-e', '--end', type=LOCAL_DATETIME)
+@click.option('-s', '--start', type=DATETIME)
+@click.option('-e', '--end', type=DATETIME)
 @click.option('-v', '--verbose', count=True)
 @click.pass_obj
 def show(calendar, start, end, verbose):
@@ -78,15 +63,8 @@ def show(calendar, start, end, verbose):
         fmt = "{id:>7} {start} {end} {title}"
     else:
         fmt = "{start} {end} {title}"
-
     for event in calendar.get_events(start, end):
-        args = {
-            'id': event.id,
-            'start': utc_to_local(event.start),
-            'end': utc_to_local(event.end),
-            'title': event.title,
-        }
-        echo(fmt.format(**args))
+        echo(fmt.format(**event._asdict()))
 
 
 @cli.command()
@@ -99,8 +77,8 @@ def delete(calendar, id):
 
 @cli.command()
 @click.option('-t', '--title')
-@click.option('-s', '--start', type=LOCAL_DATETIME)
-@click.option('-e', '--end', type=LOCAL_DATETIME)
+@click.option('-s', '--start', type=DATETIME)
+@click.option('-e', '--end', type=DATETIME)
 @click.option('--all-day/--no-all-day')
 @click.option('--id', required=True, type=int)
 @click.pass_obj
