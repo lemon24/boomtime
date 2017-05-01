@@ -33,6 +33,7 @@ class Calendar:
                 start < :start and end > :end
                 OR start between :start and :end
                 OR end between :start and :end
+            ORDER BY start, end
         """, {'start': start, 'end': end})
 
         for row in rows:
