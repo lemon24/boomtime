@@ -24,15 +24,22 @@ class Calendar:
             """, (title, description, all_day, start, end))
 
     def get_events(self, start, end):
-        # TODO: all_day == 1 needs a different query
+        """Return the events in a time interval.
 
+        start is inclusive, end is exclusive, i.e. an event is returned iff
+        [start, end) & [event start, event end) != {}.
+
+        Events are returned in chronological order.
+
+        """
         rows = self.db.execute("""
             SELECT id, title, description, all_day, start, end
             FROM events
             WHERE
-                start < :start and end > :end
-                OR start between :start and :end
-                OR end between :start and :end
+                start < :start and end > :end OR
+                start >= :start and end <= :end OR
+                start >= :start and start < :end OR
+                end > :start and end <= :end
             ORDER BY start, end
         """, {'start': start, 'end': end})
 

@@ -46,3 +46,35 @@ def test_everything(make_calendar):
     assert three.description == 'three'
     assert not three.all_day
 
+
+def make_get_titles(calendar, datetime_fmt):
+    def get_titles(start, end):
+        start = datetime.strptime(start, datetime_fmt)
+        end = datetime.strptime(end, datetime_fmt)
+        return [e.title for e in calendar.get_events(start, end)]
+    return get_titles
+
+
+@pytest.mark.parametrize('make_calendar', [
+    Calendar,
+    lambda db: LocalCalendar(db, pytz.timezone('Europe/Brussels')),
+])
+def test_get_event_boundaries(make_calendar):
+    calendar = make_calendar(open_db(':memory:'))
+    get_titles = make_get_titles(calendar, '%H:%M')
+
+    calendar.add_event('one', datetime(1900, 1, 1, 0, 10), datetime(1900, 1, 1, 0, 20))
+
+    assert get_titles('00:10', '00:20') == ['one']
+    assert get_titles('00:11', '00:19') == ['one']
+    assert get_titles('00:09', '00:21') == ['one']
+    assert get_titles('00:10', '00:11') == ['one']
+    assert get_titles('00:19', '00:20') == ['one']
+    assert get_titles('00:09', '00:11') == ['one']
+    assert get_titles('00:19', '00:21') == ['one']
+
+    assert get_titles('00:09', '00:10') == []
+    assert get_titles('00:20', '00:21') == []
+    assert get_titles('00:08', '00:09') == []
+    assert get_titles('00:21', '00:22') == []
+
