@@ -17,6 +17,15 @@ class Calendar:
     def add_event(self, title, start, end, description=None, all_day=False):
         if start > end:
             raise CalendarError("start cannot be later than end")
+
+        # start and end must both be at midnight for all-day events.
+        # Midnight is timezone-dependent, so we can only ensure that
+        # they're an exact number of days apart.
+        if all_day:
+            d = end - start
+            if d.seconds != 0 or d.microseconds != 0:
+                raise CalendarError("start and end must be an exact number of days apart for all-day events")
+
         with self.db:
             self.db.execute("""
                 INSERT INTO events (title, description, all_day, start, end)
@@ -56,8 +65,10 @@ class Calendar:
 
     def update_event(self, id, title=None, start=None, end=None, description=None, all_day=None):
         params = {'id': id}
+
         if title is not None:
             params['title'] = title
+
         if start and end:
             if start > end:
                 raise CalendarError("start cannot be later than end")
@@ -65,9 +76,28 @@ class Calendar:
             params['end'] = end
         elif start or end:
             raise CalendarError("both start and end must be given")
+
         if description is not None:
             params['description'] = description
+
         if all_day is not None:
+
+            # start and end must both be at midnight for all-day events.
+            # Midnight is timezone-dependent, so we can only ensure that
+            # they're an exact number of days apart.
+            if all_day:
+
+                # If start and end are not given, we need to get them from the
+                # database, do the check, and then update the event, all in
+                # a single transaction. This would complicate the code, so we
+                # just make them required for now.
+                if not (start and end):
+                    raise CalendarError("start and end must be given when enabling all_day")
+
+                d = end - start
+                if d.seconds != 0 or d.microseconds != 0:
+                    raise CalendarError("start and end must be an exact number of days apart for all-day events")
+
             params['all_day'] = all_day
 
         with self.db:

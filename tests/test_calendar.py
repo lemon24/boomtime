@@ -4,6 +4,7 @@ import pytest
 import pytz
 
 from boomtime.db import open_db
+from boomtime.calendar import CalendarError
 from boomtime.calendar import Calendar
 from boomtime.local_calendar import LocalCalendar
 
@@ -77,4 +78,36 @@ def test_get_event_boundaries(make_calendar):
     assert get_titles('00:20', '00:21') == []
     assert get_titles('00:08', '00:09') == []
     assert get_titles('00:21', '00:22') == []
+
+
+@pytest.mark.parametrize('make_calendar', [
+    Calendar,
+    lambda db: LocalCalendar(db, pytz.timezone('Europe/Brussels')),
+])
+def test_add_event_exceptions(make_calendar):
+    calendar = make_calendar(open_db(':memory:'))
+
+    calendar.add_event('one', datetime(1900, 1, 1), datetime(1900, 1, 2, 1))
+    with pytest.raises(CalendarError):
+        calendar.add_event('two', datetime(1900, 1, 1), datetime(1900, 1, 2, 1), all_day=True)
+    calendar.add_event('two', datetime(1900, 1, 1), datetime(1900, 1, 2), all_day=True)
+
+
+@pytest.mark.parametrize('make_calendar', [
+    Calendar,
+    lambda db: LocalCalendar(db, pytz.timezone('Europe/Brussels')),
+])
+def test_update_event_exceptions(make_calendar):
+    calendar = make_calendar(open_db(':memory:'))
+
+    calendar.add_event('one', datetime(1900, 1, 1), datetime(1900, 1, 2, 1))
+    event_id = list(calendar.get_events(datetime(1900, 1, 1), datetime(1900, 1, 2)))[0].id
+
+    with pytest.raises(CalendarError):
+        calendar.update_event(event_id, all_day=True)
+    with pytest.raises(CalendarError):
+        calendar.update_event(event_id, start=datetime(1900, 1, 1), end=datetime(1900, 1, 2, 1), all_day=True)
+    calendar.update_event(event_id, start=datetime(1900, 1, 1), end=datetime(1900, 1, 2), all_day=True)
+
+    calendar.update_event(event_id, all_day=False)
 
