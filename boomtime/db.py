@@ -69,7 +69,7 @@ def create_db(db):
         """)
         db.execute("""
             CREATE TABLE events (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT,
                 description TEXT,
                 all_day INTEGER,
