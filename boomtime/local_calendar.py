@@ -1,4 +1,5 @@
 from .calendar import Calendar
+from .calendar import CalendarError
 
 import pytz
 
@@ -26,6 +27,13 @@ class LocalCalendar(Calendar):
         return utc_to_local(dt, self.tz)
 
     def add_event(self, title, start, end, description=None, all_day=False):
+
+        # start and end must both be at midnight for all-day events.
+        if all_day:
+            if (start - start.replace(hour=0, minute=0, second=0, microsecond=0)
+                    or end - end.replace(hour=0, minute=0, second=0, microsecond=0)):
+                raise CalendarError("start and end must be at midnight for all-day events")
+
         start = self.local_to_utc(start)
         end = self.local_to_utc(end)
         return super().add_event(title, start, end, description, all_day)
@@ -40,6 +48,21 @@ class LocalCalendar(Calendar):
             yield event
 
     def update_event(self, id, title=None, start=None, end=None, description=None, all_day=None):
+
+        # start and end must both be at midnight for all-day events.
+        if all_day:
+
+            # If start and end are not given, we need to get them from the
+            # database, do the check, and then update the event, all in
+            # a single transaction. This would complicate the code, so we
+            # just make them required for now.
+            if not (start and end):
+                raise CalendarError("start and end must be given when enabling all_day")
+
+            if (start - start.replace(hour=0, minute=0, second=0, microsecond=0)
+                    or end - end.replace(hour=0, minute=0, second=0, microsecond=0)):
+                raise CalendarError("start and end must be at midnight for all-day events")
+
         start = self.local_to_utc(start) if start else None
         end = self.local_to_utc(end) if end else None
         return super().update_event(id, title, start, end, description, all_day)

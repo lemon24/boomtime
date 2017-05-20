@@ -111,3 +111,17 @@ def test_update_event_exceptions(make_calendar):
 
     calendar.update_event(event_id, all_day=False)
 
+
+def test_add_event_exceptions_local():
+    calendar = LocalCalendar(open_db(':memory:'), pytz.timezone('Europe/Brussels'))
+    with pytest.raises(CalendarError):
+        calendar.add_event('one', datetime(1900, 1, 1, 1), datetime(1900, 1, 2, 1), all_day=True)
+
+
+def test_update_event_exceptions_local():
+    calendar = LocalCalendar(open_db(':memory:'), pytz.timezone('Europe/Brussels'))
+    calendar.add_event('one', datetime(1900, 1, 1), datetime(1900, 1, 2, 1))
+    event_id = list(calendar.get_events(datetime(1900, 1, 1), datetime(1900, 1, 2)))[0].id
+    with pytest.raises(CalendarError):
+        calendar.update_event(event_id, start=datetime(1900, 1, 1, 1), end=datetime(1900, 1, 2, 1), all_day=True)
+
