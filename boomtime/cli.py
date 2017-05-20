@@ -48,7 +48,7 @@ def cli(ctx, db):
 @click.pass_obj
 def add(calendar, title, start, end, all_day):
     try:
-        calendar.add_event(title, start, end, all_day)
+        calendar.add_event(title, start, end, all_day=all_day)
     except CalendarError as e:
         abort(str(e))
 
