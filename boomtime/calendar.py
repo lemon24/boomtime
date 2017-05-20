@@ -27,10 +27,12 @@ class Calendar:
                 raise CalendarError("start and end must be an exact number of days apart for all-day events")
 
         with self.db:
-            self.db.execute("""
+            rows = self.db.execute("""
                 INSERT INTO events (title, description, all_day, start, end)
                 VALUES (?, ?, ?, ?, ?);
             """, (title, description, all_day, start, end))
+
+        return rows.lastrowid
 
     def get_events(self, start, end):
         """Return the events in a time interval.
