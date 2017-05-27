@@ -7,7 +7,7 @@ import dateutil.parser
 import tzlocal
 
 from .db import open_db
-from .calendar import CalendarError
+from .exceptions import CalendarError
 from .local_calendar import LocalCalendar
 
 

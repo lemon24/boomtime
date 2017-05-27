@@ -1,12 +1,9 @@
 from collections import namedtuple
 
+from .exceptions import MissingArgument, InvalidArgument
+
 
 Event = namedtuple('Event', 'id title description all_day start end')
-
-
-class CalendarError(Exception):
-
-    pass
 
 
 class Calendar:
@@ -16,7 +13,7 @@ class Calendar:
 
     def add_event(self, title, start, end, description=None, all_day=False):
         if start > end:
-            raise CalendarError("start cannot be later than end")
+            raise InvalidArgument("start cannot be later than end")
 
         # start and end must both be at midnight for all-day events.
         # Midnight is timezone-dependent, so we can only ensure that
@@ -24,7 +21,7 @@ class Calendar:
         if all_day:
             d = end - start
             if d.seconds != 0 or d.microseconds != 0:
-                raise CalendarError("start and end must be an exact number of days apart for all-day events")
+                raise InvalidArgument("start and end must be an exact number of days apart for all-day events")
 
         with self.db:
             rows = self.db.execute("""
@@ -73,11 +70,11 @@ class Calendar:
 
         if start and end:
             if start > end:
-                raise CalendarError("start cannot be later than end")
+                raise InvalidArgument("start cannot be later than end")
             params['start'] = start
             params['end'] = end
         elif start or end:
-            raise CalendarError("both start and end must be given")
+            raise MissingArgument("both start and end must be given")
 
         if description is not None:
             params['description'] = description
@@ -94,11 +91,11 @@ class Calendar:
                 # a single transaction. This would complicate the code, so we
                 # just make them required for now.
                 if not (start and end):
-                    raise CalendarError("start and end must be given when enabling all_day")
+                    raise MissingArgument("start and end must be given when enabling all_day")
 
                 d = end - start
                 if d.seconds != 0 or d.microseconds != 0:
-                    raise CalendarError("start and end must be an exact number of days apart for all-day events")
+                    raise InvalidArgument("start and end must be an exact number of days apart for all-day events")
 
             params['all_day'] = all_day
 

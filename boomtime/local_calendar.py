@@ -1,5 +1,5 @@
 from .calendar import Calendar
-from .calendar import CalendarError
+from .exceptions import MissingArgument, InvalidArgument
 
 import pytz
 
@@ -32,7 +32,7 @@ class LocalCalendar(Calendar):
         if all_day:
             if (start - start.replace(hour=0, minute=0, second=0, microsecond=0)
                     or end - end.replace(hour=0, minute=0, second=0, microsecond=0)):
-                raise CalendarError("start and end must be at midnight for all-day events")
+                raise InvalidArgument("start and end must be at midnight for all-day events")
 
         start = self.local_to_utc(start)
         end = self.local_to_utc(end)
@@ -57,11 +57,11 @@ class LocalCalendar(Calendar):
             # a single transaction. This would complicate the code, so we
             # just make them required for now.
             if not (start and end):
-                raise CalendarError("start and end must be given when enabling all_day")
+                raise MissingArgument("start and end must be given when enabling all_day")
 
             if (start - start.replace(hour=0, minute=0, second=0, microsecond=0)
                     or end - end.replace(hour=0, minute=0, second=0, microsecond=0)):
-                raise CalendarError("start and end must be at midnight for all-day events")
+                raise InvalidArgument("start and end must be at midnight for all-day events")
 
         start = self.local_to_utc(start) if start else None
         end = self.local_to_utc(end) if end else None
