@@ -14,6 +14,11 @@ setup(
     author='lemon24',
     url='https://github.com/lemon24/boomtime',
     packages=['boomtime'],
+    install_requires=[
+        'pytz',
+        'python-dateutil>=2',
+        'click>=5',
+    ],
     description="",
     classifiers=[
         "License :: OSI Approved :: BSD License",
