@@ -93,7 +93,15 @@ def test_update_event_exceptions(calendar):
     event_id = list(calendar.get_events(datetime(1900, 1, 1), datetime(1900, 1, 2)))[0].id
 
     with pytest.raises(MissingArgument):
+        calendar.update_event(event_id, start=datetime(1900, 1, 1))
+    with pytest.raises(MissingArgument):
+        calendar.update_event(event_id, end=datetime(1900, 1, 2))
+
+    with pytest.raises(MissingArgument):
+        calendar.update_event(event_id, start=datetime(1900, 1, 1), end=datetime(1900, 1, 2))
+    with pytest.raises(MissingArgument):
         calendar.update_event(event_id, all_day=True)
+
     with pytest.raises(InvalidArgument):
         calendar.update_event(event_id, start=datetime(1900, 1, 1), end=datetime(1900, 1, 2, 1), all_day=True)
     calendar.update_event(event_id, start=datetime(1900, 1, 1), end=datetime(1900, 1, 2), all_day=True)

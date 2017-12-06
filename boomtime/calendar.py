@@ -73,6 +73,8 @@ class Calendar:
                 raise InvalidArgument("start cannot be later than end")
             params['start'] = start
             params['end'] = end
+            if all_day is None:
+                raise MissingArgument("all_day must be given when updating start/end")
         elif start or end:
             raise MissingArgument("both start and end must be given")
 
